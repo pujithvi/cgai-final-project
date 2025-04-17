@@ -18,6 +18,101 @@ vec3 rotate(vec3 p, vec3 ax, float ro)
     return mix(dot(p, ax) * ax, p, cos(ro)) + sin(ro) * cross(ax, p);
 }
 
+////////////////////////////////////////////////////////////
+///// Pokeball
+///////////////////////////////////////////////////////
+//------------------------------------------------------------------------------
+// Common constants & 2D rotation
+//------------------------------------------------------------------------------
+
+mat2 rot(float a) {
+    float c = cos(a), s = sin(a);
+    return mat2(c,  s,
+               -s,  c);
+}
+
+float sdfSphere(vec3 p, float r) {
+    return length(p) - r;
+}
+
+float sdfBox(vec3 p, vec3 b) {
+    vec3 d = abs(p) - b;
+    return length(max(d, 0.0)) + min(max(d.x, max(d.y, d.z)), 0.0);
+}
+
+float sdCappedCylinder(vec3 p, vec2 h) {
+    vec2 d = abs(vec2(length(p.xz), p.y)) - h;
+    return min(max(d.x, d.y), 0.0) + length(max(d, 0.0));
+}
+
+//------------------------------------------------------------------------------
+// Poké Ball parts
+//------------------------------------------------------------------------------
+float pokeBallTop(vec3 p) {
+    // half‑sphere shell + box cut to flatten bottom half
+    float s = sdfSphere(p, 0.5);
+    float b = sdfBox(p + vec3(0.0, 0.47, 0.0), vec3(0.6, 0.5, 0.6));
+    return max(s, -b);
+}
+
+float pokeBallBottom(vec3 p) {
+    float s = sdfSphere(p, 0.5);
+    float b = sdfBox(p + vec3(0.0, -0.47, 0.0), vec3(0.6, 0.5, 0.6));
+    return max(s, -b);
+}
+
+float pokeBallButtonCutout(vec3 p) {
+    // carve a cylinder out for the button
+    p.z += 0.5;
+    p.yz *= rot(PI/2.0);
+    return sdCappedCylinder(p, vec2(0.13, 0.02));
+}
+
+float pokeBallButton(vec3 p) {
+    // outer ring
+    vec3 p0 = p; 
+    p0.z += 0.47;
+    p0.yz *= rot(PI/2.0);
+    float ring = sdCappedCylinder(p0, vec2(0.10, 0.01));
+    // inner disk
+    vec3 p1 = p;
+    p1.z += 0.49;
+    p1.yz *= rot(PI/2.0);
+    float disk = sdCappedCylinder(p1, vec2(0.06, 0.01));
+    // small sphere for “button bump”
+    float bump = sdfSphere(p + vec3(0.0, 0.0, 0.585), 0.1);
+    // combine ring, disk and bump
+    return min(ring, max(disk, -bump));
+}
+
+//------------------------------------------------------------------------------
+// Final composite SDF
+//------------------------------------------------------------------------------
+float sdPokeball(vec3 p, float s) {
+    // 1) move into Poké‑ball space
+    p /= s;
+    
+    // — shell halves —
+    float top    = pokeBallTop(p);
+    float bottom = pokeBallBottom(p);
+    
+    // — button cutout —
+    float cut = pokeBallButtonCutout(p);
+    top    = max(top,    -cut);
+    bottom = max(bottom, -cut);
+    float shell = min(top, bottom);
+    
+    // — button geometry —
+    float btn = pokeBallButton(p);
+    
+    // 2) composite shell + button
+    float d = min(shell, btn);
+    
+    // 3) scale distance back up
+    return d * s;
+}
+
+
 /////////////////////////////////////////////////////
 //// sdf functions
 /////////////////////////////////////////////////////
@@ -373,9 +468,8 @@ float sdf(vec3 p)
     s = sdfUnion(s, sdfSphere(p - vec3(-1.6, 1.2, 3.25), vec3(0.), 0.11));
 
     s = sdfUnion(s, sdfSquirtle(p-vec3(0.0, 1.0, 4.)));
-    //// your implementation starts
-
-    //// your implementation ends
+    
+    s = sdfUnion(s, sdPokeball(p - vec3(0.0, 0.2, 2.5), 0.5));
 
     return s;
 }
@@ -514,6 +608,30 @@ vec3 phong_shading(vec3 p, vec3 n)
 
     if (sdfSquirtle(p - vec3(0.0, 1.0, 4.)) < 0.01 ){
         color = vec3(0.53, 0.81, 0.92);
+    }
+
+    //––– Poké Ball coloring –––
+    // same center + scale you used in sdf()
+    const vec3 ballCenter = vec3(0.0, 0.2, 2.5);
+    const float  ballScale  = 0.5;
+    vec3  lp   = p - ballCenter;                
+    float d    = sdPokeball(lp, ballScale);      
+    float eps  = 1e-3;
+    if (d < eps) {
+        // 1) black band around the equator
+        float bandThickness = 0.02 * ballScale;
+        if (abs(lp.y) < bandThickness) {
+            color = vec3(0.0);
+        }
+        // 2) red vs white hemispheres
+        else if (lp.y > 0.0) {
+            color = vec3(1.0, 0.0, 0.0);
+        } else {
+            color = vec3(1.0, 1.0, 1.0);
+        }
+        if (pokeBallButton(lp) < eps) {
+            color = vec3(0.8);  
+        }
     }
 
     return (amb + dif + spec + sunDif) * color;
