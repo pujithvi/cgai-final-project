@@ -364,10 +364,13 @@ float sdf(vec3 p)
     //// calculate the sdf based on all objects in the scene
 
     // s = sdfUnion(s, sdfPlane(p, plane_h));
-    s = sdfUnion(sdfPlane(p, plane_h), sdfSphere(p - vec3(1.8, 1.5, 3.4), vec3(0.), 0.08));
-    s = sdfUnion(s, sdfSphere(p - vec3(2.0, 1.5, 3.3), vec3(0.), 0.08));
+    s = sdfUnion(sdfPlane(p, plane_h), sdfSphere(p - vec3(1.8, 1.5, 3.43), vec3(0.), 0.08));
+    s = sdfUnion(s, sdfSphere(p - vec3(2.0, 1.5, 3.35), vec3(0.), 0.08));
     s = sdfUnion(s, sdfCharmander(p - vec3(2.0, 1.0, 4.)));
     s = sdfUnion(s, sdfBulb(p - vec3(-2.0, 1.0, 4.)));
+    //adding bulbasaur eyes
+    s = sdfUnion(s, sdfSphere(p - vec3(-2.2, 1.2, 3.17), vec3(0.), 0.11));
+    s = sdfUnion(s, sdfSphere(p - vec3(-1.6, 1.2, 3.25), vec3(0.), 0.11));
 
     s = sdfUnion(s, sdfSquirtle(p-vec3(0.0, 1.0, 4.)));
     //// your implementation starts
