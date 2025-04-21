@@ -467,6 +467,11 @@ float sdf(vec3 p)
     s = sdfUnion(s, sdfSphere(p - vec3(-2.2, 1.2, 3.17), vec3(0.), 0.11));
     s = sdfUnion(s, sdfSphere(p - vec3(-1.6, 1.2, 3.25), vec3(0.), 0.11));
 
+    //adding squirtle eyes
+    s = sdfUnion(s, sdfSphere(p - vec3(-0.2, 1.5, 3.25), vec3(0.), 0.09));
+    s = sdfUnion(s, sdfSphere(p - vec3(0.2, 1.5, 3.25), vec3(0.), 0.09));
+
+
     s = sdfUnion(s, sdfSquirtle(p-vec3(0.0, 1.0, 4.)));
     
     s = sdfUnion(s, sdPokeball(p - vec3(0.0, 0.2, 2.5), 0.5));
