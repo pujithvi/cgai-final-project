@@ -574,11 +574,11 @@ vec3 normal(vec3 p)
 vec3 phong_shading(vec3 p, vec3 n)
 {
     // background
-    // if(p.z > 20.0)
-    // {
-    //     vec3 color = vec3(0.0, 0.67, 1.0);
-    //     return color;
-    // }
+    if(p.z > 20.0)
+    {
+        vec3 color = vec3(0.529, 0.808, 0.922);
+        return color;
+    }
 
     //// phong shading
     vec3 lightPos = vec3(4. * sin(iTime), 4., 4. * cos(iTime));
@@ -600,8 +600,9 @@ vec3 phong_shading(vec3 p, vec3 n)
 
     //// your implementation starts
 
-
-
+    // if (sdfSphere(p - vec3(-2.2, 1.2, 3.17)) < 0.01){
+    //     color = vec3(0.0, 1.0, 0.0);
+    // }
 
     if (sdfCharmander(p - vec3(2.0, 1.0, 4.)) < 0.01){
         color = vec3(1.0, 0.5, 0.0);
@@ -613,6 +614,10 @@ vec3 phong_shading(vec3 p, vec3 n)
 
     if (sdfSquirtle(p - vec3(0.0, 1.0, 4.)) < 0.01 ){
         color = vec3(0.53, 0.81, 0.92);
+    }   
+
+    if (sdfPlane(p, -0.1) < 0.01){
+        color = vec3(0.196, 0.804, 0.196);
     }
 
     //––– Poké Ball coloring –––
@@ -638,6 +643,15 @@ vec3 phong_shading(vec3 p, vec3 n)
             color = vec3(0.8);  
         }
     }
+
+    // // Eye coloring – black
+    // if (sdfSphere(p - vec3(-2.2, 1.2, 3.17), vec3(0.0), 0.11) < 0.01 ||
+    // sdfSphere(p - vec3(-1.6, 1.2, 3.25), vec3(0.0), 0.11) < 0.01 ||
+    // sdfSphere(p - vec3(-0.2, 1.5, 3.25), vec3(0.0), 0.09) < 0.01 ||
+    // sdfSphere(p - vec3(0.2, 1.5, 3.25), vec3(0.0), 0.09) < 0.01) {
+    //     color = vec3(0.0); // black eyes
+    // }
+
 
     return (amb + dif + spec + sunDif) * color;
 }
