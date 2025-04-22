@@ -21,9 +21,6 @@ vec3 rotate(vec3 p, vec3 ax, float ro)
 ////////////////////////////////////////////////////////////
 ///// Pokeball
 ///////////////////////////////////////////////////////
-//------------------------------------------------------------------------------
-// Common constants & 2D rotation
-//------------------------------------------------------------------------------
 
 mat2 rot(float a) {
     float c = cos(a), s = sin(a);
@@ -40,9 +37,20 @@ float sdfBox(vec3 p, vec3 b) {
     return length(max(d, 0.0)) + min(max(d.x, max(d.y, d.z)), 0.0);
 }
 
-float sdCappedCylinder(vec3 p, vec2 h) {
+float sdfCappedCylinder(vec3 p, vec2 h) {
     vec2 d = abs(vec2(length(p.xz), p.y)) - h;
     return min(max(d.x, d.y), 0.0) + length(max(d, 0.0));
+}
+
+float sdfPlane(vec3 p, float h)
+{
+    return p.y - h;
+}
+
+float sdfSphere(vec3 p, vec3 c, float r)
+{
+    return length(p-c) - r;
+
 }
 
 //------------------------------------------------------------------------------
@@ -62,10 +70,9 @@ float pokeBallBottom(vec3 p) {
 }
 
 float pokeBallButtonCutout(vec3 p) {
-    // carve a cylinder out for the button
     p.z += 0.5;
     p.yz *= rot(PI/2.0);
-    return sdCappedCylinder(p, vec2(0.13, 0.02));
+    return sdfCappedCylinder(p, vec2(0.13, 0.02));
 }
 
 float pokeBallButton(vec3 p) {
@@ -73,63 +80,37 @@ float pokeBallButton(vec3 p) {
     vec3 p0 = p; 
     p0.z += 0.47;
     p0.yz *= rot(PI/2.0);
-    float ring = sdCappedCylinder(p0, vec2(0.10, 0.01));
+    float ring = sdfCappedCylinder(p0, vec2(0.10, 0.01));
     // inner disk
     vec3 p1 = p;
     p1.z += 0.49;
     p1.yz *= rot(PI/2.0);
-    float disk = sdCappedCylinder(p1, vec2(0.06, 0.01));
-    // small sphere for “button bump”
+    float disk = sdfCappedCylinder(p1, vec2(0.06, 0.01));
+
     float bump = sdfSphere(p + vec3(0.0, 0.0, 0.585), 0.1);
-    // combine ring, disk and bump
     return min(ring, max(disk, -bump));
 }
 
-//------------------------------------------------------------------------------
-// Final composite SDF
-//------------------------------------------------------------------------------
-float sdPokeball(vec3 p, float s) {
-    // 1) move into Poké‑ball space
+float sdfPokeball(vec3 p, float s) {
     p /= s;
     
-    // — shell halves —
+    // each half of shell
     float top    = pokeBallTop(p);
     float bottom = pokeBallBottom(p);
     
-    // — button cutout —
+    // button cutout
     float cut = pokeBallButtonCutout(p);
     top    = max(top,    -cut);
     bottom = max(bottom, -cut);
     float shell = min(top, bottom);
     
-    // — button geometry —
     float btn = pokeBallButton(p);
-    
-    // 2) composite shell + button
+   
     float d = min(shell, btn);
     
-    // 3) scale distance back up
     return d * s;
 }
 
-
-/////////////////////////////////////////////////////
-//// sdf functions
-/////////////////////////////////////////////////////
-
-float sdfPlane(vec3 p, float h)
-{
-    return p.y - h;
-}
-
-float sdfSphere(vec3 p, vec3 c, float r)
-{
-    //// your implementation starts
-
-    return length(p-c) - r;
-    
-    //// your implementation ends
-}
 
 /////////////////////////////////////////////////////
 //// Step 1: training a neural SDF model
@@ -474,7 +455,7 @@ float sdf(vec3 p)
 
     s = sdfUnion(s, sdfSquirtle(p-vec3(0.0, 1.0, 4.)));
     
-    s = sdfUnion(s, sdPokeball(p - vec3(0.0, 0.2, 2.5), 0.5));
+    s = sdfUnion(s, sdfPokeball(p - vec3(0.0, 0.2, 2.5), 0.5));
 
     return s;
 }
@@ -620,20 +601,19 @@ vec3 phong_shading(vec3 p, vec3 n)
         color = vec3(0.196, 0.804, 0.196);
     }
 
-    //––– Poké Ball coloring –––
-    // same center + scale you used in sdf()
+    // poke ball coloring
     const vec3 ballCenter = vec3(0.0, 0.2, 2.5);
     const float  ballScale  = 0.5;
     vec3  lp   = p - ballCenter;                
-    float d    = sdPokeball(lp, ballScale);      
+    float d    = sdfPokeball(lp, ballScale);      
     float eps  = 1e-3;
     if (d < eps) {
-        // 1) black band around the equator
+        // black band around center
         float bandThickness = 0.02 * ballScale;
         if (abs(lp.y) < bandThickness) {
             color = vec3(0.0);
         }
-        // 2) red vs white hemispheres
+        // red vs white hemispheres
         else if (lp.y > 0.0) {
             color = vec3(1.0, 0.0, 0.0);
         } else {
@@ -643,14 +623,6 @@ vec3 phong_shading(vec3 p, vec3 n)
             color = vec3(0.8);  
         }
     }
-
-    // // Eye coloring – black
-    // if (sdfSphere(p - vec3(-2.2, 1.2, 3.17), vec3(0.0), 0.11) < 0.01 ||
-    // sdfSphere(p - vec3(-1.6, 1.2, 3.25), vec3(0.0), 0.11) < 0.01 ||
-    // sdfSphere(p - vec3(-0.2, 1.5, 3.25), vec3(0.0), 0.09) < 0.01 ||
-    // sdfSphere(p - vec3(0.2, 1.5, 3.25), vec3(0.0), 0.09) < 0.01) {
-    //     color = vec3(0.0); // black eyes
-    // }
 
 
     return (amb + dif + spec + sunDif) * color;
