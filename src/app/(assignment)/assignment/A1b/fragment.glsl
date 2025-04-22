@@ -18,9 +18,6 @@ vec3 rotate(vec3 p, vec3 ax, float ro)
     return mix(dot(p, ax) * ax, p, cos(ro)) + sin(ro) * cross(ax, p);
 }
 
-////////////////////////////////////////////////////////////
-///// Pokeball
-///////////////////////////////////////////////////////
 
 mat2 rot(float a) {
     float c = cos(a), s = sin(a);
